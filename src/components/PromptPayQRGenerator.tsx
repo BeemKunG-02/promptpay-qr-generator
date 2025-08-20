@@ -489,7 +489,7 @@ const PromptPayQRGenerator = () => {
                       type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="xxx-xxx-xxxx"
+                      placeholder="09xxxxxxxx"
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
                     />
                   </div>
