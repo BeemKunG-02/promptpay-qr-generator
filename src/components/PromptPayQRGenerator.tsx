@@ -3,7 +3,6 @@
 import React, { useState, useRef } from 'react';
 import { QrCode, Smartphone, DollarSign, ArrowLeft, User, AlertTriangle, Info, Download } from 'lucide-react';
 import Image from 'next/image';
-import QRCode from 'qrcode';
 
 const PromptPayQRGenerator = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -13,63 +12,7 @@ const PromptPayQRGenerator = () => {
   const [showResult, setShowResult] = useState(false);
   const qrImageRef = useRef(null);
 
-  // CRC16 calculation for PromptPay
-  const calculateCRC16 = (data: string): string => {
-    const polynomial = 0x1021;
-    let crc = 0xFFFF;
-    
-    for (let i = 0; i < data.length; i++) {
-      crc ^= (data.charCodeAt(i) << 8);
-      for (let j = 0; j < 8; j++) {
-        if (crc & 0x8000) {
-          crc = (crc << 1) ^ polynomial;
-        } else {
-          crc = crc << 1;
-        }
-        crc &= 0xFFFF;
-      }
-    }
-    
-    return crc.toString(16).padStart(4, '0');
-  };
-
-  // Helper function สำหรับสร้าง PromptPay payload
-  const generatePromptPayPayload = (identifier: string, amount?: string) => {
-    const payloadFormat = '01'; // Payload Format Indicator
-    const pointOfInitiation = '11'; // Point of Initiation Method (11 = Static, 12 = Dynamic)
-    
-    // Merchant Account Information
-    let merchantAccount = '';
-    merchantAccount += '0016' + 'A000000677010111'; // Merchant Account Information (tag 00, length 16)
-    merchantAccount += '01' + String(identifier.length).padStart(2, '0') + identifier; // Merchant ID
-    merchantAccount += '0208' + 'A000000677010114'; // Merchant Account Information (tag 02, length 08)
-    
-    const merchantAccountTag = '29' + String(merchantAccount.length).padStart(2, '0') + merchantAccount;
-    
-    // Country Code
-    const countryCode = '5802TH';
-    
-    // Transaction Currency (764 = THB)
-    const currency = '5303764';
-    
-    // Transaction Amount
-    let amountTag = '';
-    if (amount && parseFloat(amount) > 0) {
-      const amountStr = parseFloat(amount).toFixed(2);
-      amountTag = '54' + String(amountStr.length).padStart(2, '0') + amountStr;
-    }
-    
-    // Combine payload without CRC
-    let payload = payloadFormat + pointOfInitiation + merchantAccountTag + countryCode + currency + amountTag + '6304';
-    
-    // Calculate CRC16
-    const crc = calculateCRC16(payload);
-    payload = payload + crc.toUpperCase();
-    
-    return payload;
-  };
-
-  // ✨ ฟังก์ชันตรวจสอบค่าธรรมเนียม (แก้ไขให้ถูกต้อง)
+  // ✨ ฟังก์ชันตรวจสอบค่าธรรมเนียม
   const checkTransactionFee = (amount: string) => {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount)) return null;
@@ -101,12 +44,11 @@ const PromptPayQRGenerator = () => {
     }
   };
 
-  // ✨ คำนวดค่าธรรมเนียมโดยประมาณ (แก้ไขให้ถูกต้อง)
+  // ✨ คำนวดค่าธรรมเนียมโดยประมาณ
   const calculateEstimatedFee = (amount: string) => {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 5000) return 0;
     
-    // ค่าธรรมเนียมตามมาตรการ PromptPay
     if (numAmount <= 30000) return 2;      // 5,001 - 30,000 บาท
     if (numAmount <= 100000) return 5;     // 30,001 - 100,000 บาท
     return 10;                             // 100,001 บาทขึ้นไป
@@ -118,6 +60,7 @@ const PromptPayQRGenerator = () => {
     setAmount(value);
   };
 
+  // ✨ สร้าง QR Code โดยใช้ PromptPay.io API
   const generateQR = async () => {
     if (!phoneNumber) {
       alert('กรุณากรอกเบอร์โทรศัพท์');
@@ -153,170 +96,181 @@ const PromptPayQRGenerator = () => {
     }
     
     try {
-      // สร้าง PromptPay payload
-      let promptPayPayload = '';
+      // ✨ ใช้ PromptPay.io API แทนการสร้าง payload เอง
+      let promptPayUrl = '';
       
-      if (cleanPhone.startsWith('+66')) {
-        // เบอร์โทรศัพท์ - แปลงเป็น format +66 เป็น 0
-        const phoneForQR = '0' + cleanPhone.substring(1);
-        promptPayPayload = generatePromptPayPayload(phoneForQR, amount);
-      } else {
-        // Tax ID หรือเลขบัตรประชาชน
-        promptPayPayload = generatePromptPayPayload(cleanPhone, amount);
+      // จัดรูปแบบเบอร์โทรศัพท์ให้ถูกต้อง
+      let formattedPhone = cleanPhone;
+      if (formattedPhone.startsWith('66')) {
+        formattedPhone = '0' + formattedPhone.substring(2);
+      } else if (!formattedPhone.startsWith('0')) {
+        formattedPhone = '0' + formattedPhone;
       }
       
-      // สร้าง QR Code เป็น Data URL
-      const qrDataURL = await QRCode.toDataURL(promptPayPayload, {
-        errorCorrectionLevel: 'M',
-        margin: 1,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        },
-        width: 512
-      });
+      // สร้าง URL สำหรับ PromptPay.io API
+      if (amount && parseFloat(amount) > 0) {
+        // มีจำนวนเงิน
+        promptPayUrl = `https://promptpay.io/${formattedPhone}/${parseFloat(amount)}`;
+      } else {
+        // ไม่มีจำนวนเงิน (ให้ลูกค้ากรอกเอง)
+        promptPayUrl = `https://promptpay.io/${formattedPhone}`;
+      }
       
-      setQrUrl(qrDataURL);
+      // ตั้งค่า URL สำหรับแสดง QR Code
+      setQrUrl(promptPayUrl);
       setShowResult(true);
+      
     } catch (error) {
       console.error('Error generating QR code:', error);
       alert('เกิดข้อผิดพลาดในการสร้าง QR Code: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
-  // ✨ ฟังก์ชันสำหรับบันทึก QR Code เป็นรูป PNG
+  // ✨ ฟังก์ชันสำหรับบันทึก QR Code เป็นรูป PNG (แก้ไขให้ทำงานกับ PromptPay.io API)
   const saveQRAsImage = async () => {
     if (!qrUrl) return;
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    try {
+      // สร้าง canvas สำหรับวาดรูป
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    // ตั้งค่าขนาด Canvas
-    canvas.width = 400;
-    canvas.height = 600;
+      // ตั้งค่าขนาด Canvas
+      canvas.width = 400;
+      canvas.height = 600;
 
-    // พื้นหลังสีขาว
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // พื้นหลังสีขาว
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Header พื้นหลังสีเขียว
-    const headerHeight = 80;
-    const gradient = ctx.createLinearGradient(0, 0, 0, headerHeight);
-    gradient.addColorStop(0, '#10b981'); // เขียวสด
-    gradient.addColorStop(1, '#059669'); // เขียวเข้ม
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, headerHeight);
+      // Header พื้นหลังสีเขียว
+      const headerHeight = 80;
+      const gradient = ctx.createLinearGradient(0, 0, 0, headerHeight);
+      gradient.addColorStop(0, '#10b981');
+      gradient.addColorStop(1, '#059669');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, headerHeight);
 
-    // ข้อความ "พร้อมเพย์" ใน Header
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('พร้อมเพย์', canvas.width / 2, 35);
-    
-    ctx.font = 'bold 16px Arial, sans-serif';
-    ctx.fillText('PromptPay', canvas.width / 2, 55);
+      // ข้อความ "พร้อมเพย์" ใน Header
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('พร้อมเพย์', canvas.width / 2, 35);
+      
+      ctx.font = 'bold 16px Arial, sans-serif';
+      ctx.fillText('PromptPay', canvas.width / 2, 55);
 
-    // โหลดรูป QR Code
-    const qrImage = new window.Image();
-    qrImage.crossOrigin = 'anonymous';
-    
-    return new Promise((resolve) => {
-      qrImage.onload = () => {
-        // วาด QR Code ตรงกลาง
-        const qrSize = 200;
-        const qrX = (canvas.width - qrSize) / 2;
-        const qrY = 120;
-        
-        // พื้นหลังสีขาวรอบ QR
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(qrX - 15, qrY - 15, qrSize + 30, qrSize + 30);
-        
-        // เงาใต้ QR Code
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetY = 5;
-        
-        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-        
-        // รีเซ็ตเงา
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetY = 0;
+      // โหลดรูป QR Code จาก PromptPay.io API
+      const qrImage = new window.Image();
+      qrImage.crossOrigin = 'anonymous';
+      
+      return new Promise((resolve) => {
+        qrImage.onload = () => {
+          // วาด QR Code ตรงกลาง
+          const qrSize = 200;
+          const qrX = (canvas.width - qrSize) / 2;
+          const qrY = 120;
+          
+          // พื้นหลังสีขาวรอบ QR
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(qrX - 15, qrY - 15, qrSize + 30, qrSize + 30);
+          
+          // เงาใต้ QR Code
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetY = 5;
+          
+          ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+          
+          // รีเซ็ตเงา
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetY = 0;
 
-        // ข้อมูลใต้ QR Code
-        let currentY = qrY + qrSize + 40;
+          // ข้อมูลใต้ QR Code
+          let currentY = qrY + qrSize + 40;
 
-        // เบอร์โทรศัพท์
-        ctx.fillStyle = '#374151';
-        ctx.font = 'bold 14px Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('บัญชีปลายทาง:', canvas.width / 2, currentY);
-        
-        ctx.fillStyle = '#059669';
-        ctx.font = 'bold 18px Arial, sans-serif';
-        ctx.fillText(phoneNumber, canvas.width / 2, currentY + 25);
-        currentY += 60;
-
-        // ชื่อผู้รับ (ถ้ามี)
-        if (displayName) {
+          // เบอร์โทรศัพท์
           ctx.fillStyle = '#374151';
           ctx.font = 'bold 14px Arial, sans-serif';
-          ctx.fillText('ชื่อบัญชี:', canvas.width / 2, currentY);
+          ctx.textAlign = 'center';
+          ctx.fillText('บัญชีปลายทาง:', canvas.width / 2, currentY);
           
           ctx.fillStyle = '#059669';
-          ctx.font = 'bold 16px Arial, sans-serif';
-          ctx.fillText(displayName, canvas.width / 2, currentY + 25);
-          currentY += 50;
-        }
+          ctx.font = 'bold 18px Arial, sans-serif';
+          ctx.fillText(phoneNumber, canvas.width / 2, currentY + 25);
+          currentY += 60;
 
-        // จำนวนเงิน
-        ctx.fillStyle = '#374151';
-        ctx.font = 'bold 14px Arial, sans-serif';
-        ctx.fillText('จำนวนเงิน:', canvas.width / 2, currentY);
-
-        if (amount) {
-          const amountColor = parseFloat(amount) > 5000 ? '#f59e0b' : '#059669';
-          ctx.fillStyle = amountColor;
-          ctx.font = 'bold 20px Arial, sans-serif';
-          ctx.fillText(`${parseFloat(amount).toLocaleString()} บาท`, canvas.width / 2, currentY + 25);
-        } else {
-          ctx.fillStyle = '#9ca3af';
-          ctx.font = '16px Arial, sans-serif';
-          ctx.fillText('ผู้โอนกรอกเอง', canvas.width / 2, currentY + 25);
-        }
-        currentY += 60;
-
-        // ข้อความด้านล่าง
-        ctx.fillStyle = '#6b7280';
-        ctx.font = '12px Arial, sans-serif';
-        ctx.fillText('สแกน QR Code เพื่อโอนเงิน', canvas.width / 2, currentY);
-        ctx.fillText('ระบบ PromptPay ธนาคารแห่งประเทศไทย', canvas.width / 2, currentY + 20);
-
-        // ดาวน์โหลดรูป
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
+          // ชื่อผู้รับ (ถ้ามี)
+          if (displayName) {
+            ctx.fillStyle = '#374151';
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.fillText('ชื่อบัญชี:', canvas.width / 2, currentY);
             
-            // ชื่อไฟล์
-            const fileName = displayName 
-              ? `promptpay-${displayName.replace(/\s+/g, '-')}-${phoneNumber}.png`
-              : `promptpay-${phoneNumber}-${amount || 'custom'}.png`;
-            
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            ctx.fillStyle = '#059669';
+            ctx.font = 'bold 16px Arial, sans-serif';
+            ctx.fillText(displayName, canvas.width / 2, currentY + 25);
+            currentY += 50;
           }
-          resolve(undefined);
-        }, 'image/png');
-      };
 
-      qrImage.src = qrUrl;
-    });
+          // จำนวนเงิน
+          ctx.fillStyle = '#374151';
+          ctx.font = 'bold 14px Arial, sans-serif';
+          ctx.fillText('จำนวนเงิน:', canvas.width / 2, currentY);
+
+          if (amount) {
+            const amountColor = parseFloat(amount) > 5000 ? '#f59e0b' : '#059669';
+            ctx.fillStyle = amountColor;
+            ctx.font = 'bold 20px Arial, sans-serif';
+            ctx.fillText(`${parseFloat(amount).toLocaleString()} บาท`, canvas.width / 2, currentY + 25);
+          } else {
+            ctx.fillStyle = '#9ca3af';
+            ctx.font = '16px Arial, sans-serif';
+            ctx.fillText('ผู้โอนกรอกเอง', canvas.width / 2, currentY + 25);
+          }
+          currentY += 60;
+
+          // ข้อความด้านล่าง
+          ctx.fillStyle = '#6b7280';
+          ctx.font = '12px Arial, sans-serif';
+          ctx.fillText('สแกน QR Code เพื่อโอนเงิน', canvas.width / 2, currentY);
+          ctx.fillText('ระบบ PromptPay ธนาคารแห่งประเทศไทย', canvas.width / 2, currentY + 20);
+
+          // ดาวน์โหลดรูป
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              
+              // ชื่อไฟล์
+              const fileName = displayName 
+                ? `promptpay-${displayName.replace(/\s+/g, '-')}-${phoneNumber}.png`
+                : `promptpay-${phoneNumber}-${amount || 'custom'}.png`;
+              
+              link.download = fileName;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            }
+            resolve(undefined);
+          }, 'image/png');
+        };
+
+        qrImage.onerror = () => {
+          alert('ไม่สามารถโหลด QR Code ได้ กรุณาลองใหม่อีกครั้ง');
+          resolve(undefined);
+        };
+
+        // ✨ โหลด QR Code จาก PromptPay.io API
+        qrImage.src = qrUrl;
+      });
+    } catch (error) {
+      console.error('Error saving QR code:', error);
+      alert('เกิดข้อผิดพลาดในการบันทึกรูป');
+    }
   };
 
   const goBack = () => {
@@ -406,6 +360,7 @@ const PromptPayQRGenerator = () => {
             {/* QR Code Section */}
             <div className="px-8 py-8">
               <div className="bg-gray-50 rounded-2xl p-6 text-center mb-6">
+                {/* ✨ ใช้ QR Code จาก PromptPay.io API */}
                 <Image
                   ref={qrImageRef}
                   src={qrUrl}
@@ -413,7 +368,7 @@ const PromptPayQRGenerator = () => {
                   width={220}
                   height={220}
                   className="mx-auto"
-                  unoptimized // สำคัญ! เพราะ QR code เป็น dynamic image
+                  unoptimized // สำคัญ! เพราะ QR code เป็น dynamic image จาก API
                 />
               </div>
 
@@ -466,6 +421,7 @@ const PromptPayQRGenerator = () => {
               <div className="text-center mt-6">
                 <p className="text-xs text-gray-400">สแกน QR Code เพื่อโอนเงิน</p>
                 <p className="text-xs text-gray-300 mt-1">ระบบ PromptPay ธนาคารแห่งประเทศไทย</p>
+                <p className="text-xs text-green-500 mt-1 font-medium">ขับเคลื่อนโดย PromptPay.io API</p>
               </div>
             </div>
           </div>
@@ -474,7 +430,7 @@ const PromptPayQRGenerator = () => {
     );
   }
 
-  // Main Form Page
+  // Main Form Page (ส่วนนี้ยังเหมือนเดิม)
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
       {/* Header */}
@@ -623,7 +579,7 @@ const PromptPayQRGenerator = () => {
                 <p>• กรอกชื่อที่ต้องการแสดง (ไม่บังคับ)</p>
                 <p>• กรอกเบอร์โทรศัพท์ที่ลงทะเบียน PromptPay</p>
                 <p>• กรอกจำนวนเงิน (หรือปล่อยว่างให้ลูกค้ากรอกเอง)</p>
-                <p>• กดปุ่ม &ldquo;สร้าง QR Code&rdquo; เพื่อสร้าง QR</p>
+                <p>• กดปุ่ม "สร้าง QR Code" เพื่อสร้าง QR</p>
                 <p>• นำ QR Code ที่ได้ไปให้ลูกค้าสแกน</p>
               </div>
             </div>
