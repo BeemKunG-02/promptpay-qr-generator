@@ -513,7 +513,7 @@ const PromptPayQRGenerator = () => {
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="ร้านอาหารแสงดาว"
+                      placeholder="ชื่อร้าน/ผู้รับเงิน"
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
                     />
                   </div>
@@ -533,7 +533,7 @@ const PromptPayQRGenerator = () => {
                       type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="098-765-4321"
+                      placeholder="xxx-xxx-xxxx"
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
                     />
                   </div>
@@ -553,7 +553,7 @@ const PromptPayQRGenerator = () => {
                       type="number"
                       value={amount}
                       onChange={handleAmountChange}
-                      placeholder="100"
+                      placeholder="ยอดเงิน"
                       min="0"
                       step="0.01"
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
@@ -705,7 +705,7 @@ const PromptPayQRGenerator = () => {
                 PromptPay.io API
               </a>{' '}
               | เว็บไซต์สร้างโดย{' '}
-              <span className="text-green-600 font-medium">Tassy_420</span>
+              <span className="text-green-600 font-medium">Tassy_420(สี่สองศูนย์)</span>
             </p>
           </div>
         </div>
