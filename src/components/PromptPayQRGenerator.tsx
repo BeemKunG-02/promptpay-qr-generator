@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { QrCode, Smartphone, DollarSign, ArrowLeft, User, AlertTriangle, Info } from 'lucide-react';
+import Image from 'next/image';
 import QRCode from 'qrcode';
 
 const PromptPayQRGenerator = () => {
@@ -10,7 +11,6 @@ const PromptPayQRGenerator = () => {
   const [displayName, setDisplayName] = useState('');
   const [qrUrl, setQrUrl] = useState('');
   const [showResult, setShowResult] = useState(false);
-  const [showWarning, setShowWarning] = useState(false);
   const qrImageRef = useRef(null);
 
   // CRC16 calculation for PromptPay
@@ -101,12 +101,12 @@ const PromptPayQRGenerator = () => {
     }
   };
 
-  // ✨ คำนวณค่าธรรมเนียมโดยประมาณ (แก้ไขให้ถูกต้อง)
+  // ✨ คำนวดค่าธรรมเนียมโดยประมาณ (แก้ไขให้ถูกต้อง)
   const calculateEstimatedFee = (amount: string) => {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 5000) return 0;
     
-    // ค่าธรรมเนียมตามมาตรฐาน PromptPay
+    // ค่าธรรมเนียมตามมาตรการ PromptPay
     if (numAmount <= 30000) return 2;      // 5,001 - 30,000 บาท
     if (numAmount <= 100000) return 5;     // 30,001 - 100,000 บาท
     return 10;                             // 100,001 บาทขึ้นไป
@@ -116,13 +116,6 @@ const PromptPayQRGenerator = () => {
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAmount(value);
-    
-    if (value) {
-      const feeInfo = checkTransactionFee(value);
-      setShowWarning(feeInfo?.hasWarning || false);
-    } else {
-      setShowWarning(false);
-    }
   };
 
   const generateQR = async () => {
@@ -280,12 +273,14 @@ const PromptPayQRGenerator = () => {
             {/* QR Code Section */}
             <div className="px-8 py-8">
               <div className="bg-gray-50 rounded-2xl p-6 text-center mb-6">
-                <img
+                <Image
                   ref={qrImageRef}
                   src={qrUrl}
                   alt="PromptPay QR Code"
-                  className="mx-auto max-w-full h-auto"
-                  style={{ width: '220px', height: '220px' }}
+                  width={220}
+                  height={220}
+                  className="mx-auto"
+                  unoptimized // สำคัญ! เพราะ QR code เป็น dynamic image
                 />
               </div>
 
@@ -416,7 +411,7 @@ const PromptPayQRGenerator = () => {
                     <input
                       type="number"
                       value={amount}
-                      onChange={handleAmountChange} // ✨ ใช้ฟังก์ชันใหม่
+                      onChange={handleAmountChange}
                       placeholder="100"
                       min="0"
                       step="0.01"
@@ -487,7 +482,7 @@ const PromptPayQRGenerator = () => {
                 <p>• กรอกชื่อที่ต้องการแสดง (ไม่บังคับ)</p>
                 <p>• กรอกเบอร์โทรศัพท์ที่ลงทะเบียน PromptPay</p>
                 <p>• กรอกจำนวนเงิน (หรือปล่อยว่างให้ลูกค้ากรอกเอง)</p>
-                <p>• กดปุ่ม "สร้าง QR Code" เพื่อสร้าง QR</p>
+                <p>• กดปุ่ม &ldquo;สร้าง QR Code&rdquo; เพื่อสร้าง QR</p>
                 <p>• นำ QR Code ที่ได้ไปให้ลูกค้าสแกน</p>
               </div>
             </div>
@@ -496,7 +491,7 @@ const PromptPayQRGenerator = () => {
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
               <h3 className="font-semibold text-blue-800 mb-3 flex items-center space-x-2">
                 <Info className="w-5 h-5" />
-                <span>ข้อมูลค่าธรรมเนียม PromptPay (มาตรฐาน)</span>
+                <span>ข้อมูลค่าธรรมเนียม PromptPay (มาตรการ)</span>
               </h3>
               <div className="space-y-2 text-sm text-blue-700">
                 <p>• <span className="font-medium text-green-600">0 - 5,000 บาท:</span> ฟรีค่าธรรมเนียม</p>
@@ -532,7 +527,7 @@ const PromptPayQRGenerator = () => {
                 <h3 className="text-lg font-bold text-gray-900 mb-3">มีค่าธรรมเนียมอย่างไร</h3>
                 <p className="text-gray-700 leading-relaxed">
                   ฟรีค่าธรรมเนียมเมื่อโอนไม่เกิน 5,000 บาท และสามารถโอนได้ไม่จำกัดจำนวนครั้ง 
-                  การโอนที่ยอดเกินกว่า 5,000 บาท จะมีค่าธรรมเนียมเป็นขั้นบันได โดยเริ่มตั้งแต่ 2 บาทสำหรับยอด 5,001-30,000 บาท 
+                  การโอนเงินเกินกว่า 5,000 บาท จะมีค่าธรรมเนียมเป็นขั้นบันได โดยเริ่มตั้งแต่ 2 บาทสำหรับยอด 5,001-30,000 บาท 
                   ค่าธรรมเนียมไม่แยกแยะว่าเป็นการโอนในเขต ข้ามเขต หรือต่างธนาคาร
                 </p>
               </div>
