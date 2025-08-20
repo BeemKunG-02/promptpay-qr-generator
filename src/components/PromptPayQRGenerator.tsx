@@ -180,7 +180,7 @@ const PromptPayQRGenerator = () => {
       setShowResult(true);
     } catch (error) {
       console.error('Error generating QR code:', error);
-      alert('เกิดข้อผิดพลาดในการสร้าง QR Code: ' + error.message);
+      alert('เกิดข้อผิดพลาดในการสร้าง QR Code: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
