@@ -430,7 +430,7 @@ const PromptPayQRGenerator = () => {
     );
   }
 
-  // Main Form Page (ส่วนนี้ยังเหมือนเดิม)
+  // Main Form Page
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
       {/* Header */}
@@ -489,7 +489,7 @@ const PromptPayQRGenerator = () => {
                       type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="09xxxxxxxx"
+                      placeholder="xxx-xxx-xxxx"
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
                     />
                   </div>
@@ -579,7 +579,7 @@ const PromptPayQRGenerator = () => {
                 <p>• กรอกชื่อที่ต้องการแสดง (ไม่บังคับ)</p>
                 <p>• กรอกเบอร์โทรศัพท์ที่ลงทะเบียน PromptPay</p>
                 <p>• กรอกจำนวนเงิน (หรือปล่อยว่างให้ลูกค้ากรอกเอง)</p>
-                <p>• กดปุ่ม "สร้าง QR Code" เพื่อสร้าง QR</p>
+                <p>• กดปุ่ม &quot;สร้าง QR Code&quot; เพื่อสร้าง QR</p>
                 <p>• นำ QR Code ที่ได้ไปให้ลูกค้าสแกน</p>
               </div>
             </div>
