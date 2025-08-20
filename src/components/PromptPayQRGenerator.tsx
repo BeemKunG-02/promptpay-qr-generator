@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef } from 'react';
-import { QrCode, Smartphone, DollarSign, ArrowLeft, User, AlertTriangle, Info } from 'lucide-react';
+import { QrCode, Smartphone, DollarSign, ArrowLeft, User, AlertTriangle, Info, Download } from 'lucide-react';
 import Image from 'next/image';
 import QRCode from 'qrcode';
 
@@ -184,6 +184,141 @@ const PromptPayQRGenerator = () => {
     }
   };
 
+  // ✨ ฟังก์ชันสำหรับบันทึก QR Code เป็นรูป PNG
+  const saveQRAsImage = async () => {
+    if (!qrUrl) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // ตั้งค่าขนาด Canvas
+    canvas.width = 400;
+    canvas.height = 600;
+
+    // พื้นหลังสีขาว
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Header พื้นหลังสีเขียว
+    const headerHeight = 80;
+    const gradient = ctx.createLinearGradient(0, 0, 0, headerHeight);
+    gradient.addColorStop(0, '#10b981'); // เขียวสด
+    gradient.addColorStop(1, '#059669'); // เขียวเข้ม
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, headerHeight);
+
+    // ข้อความ "พร้อมเพย์" ใน Header
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('พร้อมเพย์', canvas.width / 2, 35);
+    
+    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.fillText('PromptPay', canvas.width / 2, 55);
+
+    // โหลดรูป QR Code
+    const qrImage = new window.Image();
+    qrImage.crossOrigin = 'anonymous';
+    
+    return new Promise((resolve) => {
+      qrImage.onload = () => {
+        // วาด QR Code ตรงกลาง
+        const qrSize = 200;
+        const qrX = (canvas.width - qrSize) / 2;
+        const qrY = 120;
+        
+        // พื้นหลังสีขาวรอบ QR
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(qrX - 15, qrY - 15, qrSize + 30, qrSize + 30);
+        
+        // เงาใต้ QR Code
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 5;
+        
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+        
+        // รีเซ็ตเงา
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+
+        // ข้อมูลใต้ QR Code
+        let currentY = qrY + qrSize + 40;
+
+        // เบอร์โทรศัพท์
+        ctx.fillStyle = '#374151';
+        ctx.font = 'bold 14px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('บัญชีปลายทาง:', canvas.width / 2, currentY);
+        
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 18px Arial, sans-serif';
+        ctx.fillText(phoneNumber, canvas.width / 2, currentY + 25);
+        currentY += 60;
+
+        // ชื่อผู้รับ (ถ้ามี)
+        if (displayName) {
+          ctx.fillStyle = '#374151';
+          ctx.font = 'bold 14px Arial, sans-serif';
+          ctx.fillText('ชื่อบัญชี:', canvas.width / 2, currentY);
+          
+          ctx.fillStyle = '#059669';
+          ctx.font = 'bold 16px Arial, sans-serif';
+          ctx.fillText(displayName, canvas.width / 2, currentY + 25);
+          currentY += 50;
+        }
+
+        // จำนวนเงิน
+        ctx.fillStyle = '#374151';
+        ctx.font = 'bold 14px Arial, sans-serif';
+        ctx.fillText('จำนวนเงิน:', canvas.width / 2, currentY);
+
+        if (amount) {
+          const amountColor = parseFloat(amount) > 5000 ? '#f59e0b' : '#059669';
+          ctx.fillStyle = amountColor;
+          ctx.font = 'bold 20px Arial, sans-serif';
+          ctx.fillText(`${parseFloat(amount).toLocaleString()} บาท`, canvas.width / 2, currentY + 25);
+        } else {
+          ctx.fillStyle = '#9ca3af';
+          ctx.font = '16px Arial, sans-serif';
+          ctx.fillText('ผู้โอนกรอกเอง', canvas.width / 2, currentY + 25);
+        }
+        currentY += 60;
+
+        // ข้อความด้านล่าง
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '12px Arial, sans-serif';
+        ctx.fillText('สแกน QR Code เพื่อโอนเงิน', canvas.width / 2, currentY);
+        ctx.fillText('ระบบ PromptPay ธนาคารแห่งประเทศไทย', canvas.width / 2, currentY + 20);
+
+        // ดาวน์โหลดรูป
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // ชื่อไฟล์
+            const fileName = displayName 
+              ? `promptpay-${displayName.replace(/\s+/g, '-')}-${phoneNumber}.png`
+              : `promptpay-${phoneNumber}-${amount || 'custom'}.png`;
+            
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }
+          resolve(undefined);
+        }, 'image/png');
+      };
+
+      qrImage.src = qrUrl;
+    });
+  };
+
   const goBack = () => {
     setShowResult(false);
   };
@@ -308,11 +443,19 @@ const PromptPayQRGenerator = () => {
                 )}
               </div>
 
-              {/* Back Button */}
-              <div className="flex justify-center">
+              {/* Action Buttons */}
+              <div className="flex flex-col space-y-3">
+                <button
+                  onClick={saveQRAsImage}
+                  className="flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200"
+                >
+                  <Download className="w-5 h-5" />
+                  <span>บันทึกเป็นรูป</span>
+                </button>
+                
                 <button
                   onClick={goBack}
-                  className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200"
+                  className="flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200"
                 >
                   <ArrowLeft className="w-5 h-5" />
                   <span>สร้าง QR ใหม่</span>
