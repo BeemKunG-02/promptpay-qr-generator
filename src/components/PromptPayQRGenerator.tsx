@@ -9,6 +9,7 @@ const PromptPayQRGenerator = () => {
   const [displayName, setDisplayName] = useState('');
   const [qrUrl, setQrUrl] = useState('');
   const [showResult, setShowResult] = useState(false);
+  const qrCardRef = useRef<HTMLDivElement>(null);
 
   // ✨ ฟังก์ชันตรวจสอบค่าธรรมเนียม
   const checkTransactionFee = (amount: string) => {
@@ -119,133 +120,46 @@ const PromptPayQRGenerator = () => {
     }
   };
 
-  // ✨ ฟังก์ชันสำหรับบันทึก QR Code (แก้ไขให้ใช้ screenshot แทน)
+  // ✨ ฟังก์ชันสำหรับบันทึก QR Code เป็น PNG (ใช้ html2canvas)
   const saveQRAsImage = async () => {
-    if (!qrUrl) return;
+    if (!qrCardRef.current) return;
 
     try {
-      // เปิดหน้าต่างใหม่เพื่อแสดง QR Code สำหรับ screenshot
-      const printWindow = window.open('', '_blank', 'width=400,height=600');
-      if (!printWindow) {
-        alert('กรุณาอนุญาตให้เปิดหน้าต่างใหม่');
-        return;
-      }
+      // Import html2canvas dynamically
+      const html2canvas = (await import('html2canvas')).default;
+      
+      // สร้าง canvas จาก element
+      const canvas = await html2canvas(qrCardRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2, // เพิ่มความละเอียด
+        logging: false,
+        useCORS: true,
+        allowTaint: true
+      });
 
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>PromptPay QR Code</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 0;
-              padding: 20px;
-              background: white;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              min-height: 100vh;
-            }
-            .container {
-              text-align: center;
-              max-width: 350px;
-              width: 100%;
-            }
-            .header {
-              background: linear-gradient(135deg, #10b981, #059669);
-              color: white;
-              padding: 20px;
-              border-radius: 15px 15px 0 0;
-              margin-bottom: 20px;
-            }
-            .qr-container {
-              background: #f8f9fa;
-              padding: 20px;
-              border-radius: 10px;
-              margin: 20px 0;
-            }
-            .qr-image {
-              width: 200px;
-              height: 200px;
-              border: 1px solid #ddd;
-            }
-            .info {
-              background: white;
-              padding: 20px;
-              border-radius: 0 0 15px 15px;
-              border: 1px solid #e5e7eb;
-            }
-            .amount {
-              font-size: 24px;
-              font-weight: bold;
-              color: #059669;
-              margin: 10px 0;
-            }
-            .amount.high {
-              color: #f59e0b;
-            }
-            .phone {
-              font-size: 18px;
-              font-weight: bold;
-              color: #374151;
-              margin: 10px 0;
-            }
-            .name {
-              font-size: 16px;
-              color: #6b7280;
-              margin: 10px 0;
-            }
-            .footer {
-              font-size: 12px;
-              color: #9ca3af;
-              margin-top: 20px;
-            }
-            @media print {
-              .no-print { display: none; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>พร้อมเพย์</h1>
-              <p>PromptPay</p>
-            </div>
-            
-            <div class="qr-container">
-              <img src="${qrUrl}" alt="PromptPay QR Code" class="qr-image" />
-            </div>
-            
-            <div class="info">
-              <div class="phone">เบอร์: ${phoneNumber}</div>
-              ${displayName ? `<div class="name">ชื่อ: ${displayName}</div>` : ''}
-              ${amount ? 
-                `<div class="amount ${parseFloat(amount) > 5000 ? 'high' : ''}">${parseFloat(amount).toLocaleString()} บาท</div>` : 
-                '<div class="name">ผู้โอนกรอกเอง</div>'
-              }
-            </div>
-            
-            <div class="footer">
-              <p>สแกน QR Code เพื่อโอนเงิน</p>
-              <p>ระบบ PromptPay ธนาคารแห่งประเทศไทย</p>
-            </div>
-            
-            <div class="no-print" style="margin-top: 20px;">
-              <button onclick="window.print()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">พิมพ์/บันทึก</button>
-              <button onclick="window.close()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-left: 10px;">ปิด</button>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
+      // แปลงเป็น blob และดาวน์โหลด
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          
+          // ชื่อไฟล์
+          const fileName = displayName 
+            ? `promptpay-${displayName.replace(/\s+/g, '-')}-${phoneNumber}.png`
+            : `promptpay-${phoneNumber}-${amount || 'custom'}.png`;
+          
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      }, 'image/png');
       
     } catch (error) {
-      console.error('Error saving QR code:', error);
-      alert('เกิดข้อผิดพลาดในการบันทึกรูป กรุณาลอง Screenshot หน้าจอแทน');
+      console.error('Error saving image:', error);
+      alert('เกิดข้อผิดพลาดในการบันทึกรูป กรุณาติดตั้ง html2canvas library');
     }
   };
 
@@ -284,7 +198,10 @@ const PromptPayQRGenerator = () => {
 
         {/* QR Card */}
         <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-6">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div 
+            ref={qrCardRef}
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+          >
             {/* Card Header */}
             <div className="bg-white border-b border-gray-100 px-8 py-6 text-center">
               <div className="flex items-center justify-center space-x-3 mb-3">
@@ -336,12 +253,18 @@ const PromptPayQRGenerator = () => {
             {/* QR Code Section */}
             <div className="px-8 py-8">
               <div className="bg-gray-50 rounded-2xl p-6 text-center mb-6">
-                {/* ✨ ใช้ iframe แทนการโหลดรูปโดยตรง */}
+                {/* ✨ ใช้ iframe แบบไม่มี scrollbar */}
                 <iframe
                   src={qrUrl}
                   width="220"
                   height="220"
-                  style={{ border: 'none', display: 'block', margin: '0 auto' }}
+                  style={{ 
+                    border: 'none', 
+                    display: 'block', 
+                    margin: '0 auto',
+                    overflow: 'hidden'
+                  }}
+                  scrolling="no"
                   title="PromptPay QR Code"
                 />
               </div>
@@ -372,25 +295,6 @@ const PromptPayQRGenerator = () => {
                 )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col space-y-3 justify-center">
-                <button
-                  onClick={saveQRAsImage}
-                  className="flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg"
-                >
-                  <Download className="w-5 h-5" />
-                  <span>พิมพ์/บันทึกรูป</span>
-                </button>
-                
-                <button
-                  onClick={goBack}
-                  className="flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                  <span>สร้าง QR ใหม่</span>
-                </button>
-              </div>
-
               {/* Additional Info */}
               <div className="text-center mt-6">
                 <p className="text-xs text-gray-400">สแกน QR Code เพื่อโอนเงิน</p>
@@ -400,11 +304,30 @@ const PromptPayQRGenerator = () => {
             </div>
           </div>
         </div>
+
+        {/* Floating Action Buttons */}
+        <div className="fixed bottom-6 right-6 flex flex-col space-y-3">
+          <button
+            onClick={saveQRAsImage}
+            className="flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg"
+          >
+            <Download className="w-5 h-5" />
+            <span>บันทึก PNG</span>
+          </button>
+          
+          <button
+            onClick={goBack}
+            className="flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>สร้าง QR ใหม่</span>
+          </button>
+        </div>
       </div>
     );
   }
 
-  // Main Form Page
+  // Main Form Page (เหมือนเดิม)
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
       {/* Header */}
@@ -463,7 +386,7 @@ const PromptPayQRGenerator = () => {
                       type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="0xxxxxxxxx"
+                      placeholder="xxx-xxx-xxxx"
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
                     />
                   </div>
