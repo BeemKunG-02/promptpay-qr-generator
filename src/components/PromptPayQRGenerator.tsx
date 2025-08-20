@@ -444,10 +444,10 @@ const PromptPayQRGenerator = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col space-y-3">
+              <div className="flex flex-col space-y-3 justify-center">
                 <button
                   onClick={saveQRAsImage}
-                  className="flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200"
+                  className="flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg"
                 >
                   <Download className="w-5 h-5" />
                   <span>บันทึกเป็นรูป</span>
@@ -455,7 +455,7 @@ const PromptPayQRGenerator = () => {
                 
                 <button
                   onClick={goBack}
-                  className="flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200"
+                  className="flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg"
                 >
                   <ArrowLeft className="w-5 h-5" />
                   <span>สร้าง QR ใหม่</span>
