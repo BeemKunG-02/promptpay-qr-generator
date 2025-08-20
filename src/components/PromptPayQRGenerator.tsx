@@ -2,7 +2,6 @@
 
 import React, { useState, useRef } from 'react';
 import { QrCode, Smartphone, DollarSign, ArrowLeft, User, AlertTriangle, Info, Download } from 'lucide-react';
-import Image from 'next/image';
 
 const PromptPayQRGenerator = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -10,7 +9,6 @@ const PromptPayQRGenerator = () => {
   const [displayName, setDisplayName] = useState('');
   const [qrUrl, setQrUrl] = useState('');
   const [showResult, setShowResult] = useState(false);
-  const qrImageRef = useRef(null);
 
   // ✨ ฟังก์ชันตรวจสอบค่าธรรมเนียม
   const checkTransactionFee = (amount: string) => {
@@ -49,9 +47,9 @@ const PromptPayQRGenerator = () => {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 5000) return 0;
     
-    if (numAmount <= 30000) return 2;      // 5,001 - 30,000 บาท
-    if (numAmount <= 100000) return 5;     // 30,001 - 100,000 บาท
-    return 10;                             // 100,001 บาทขึ้นไป
+    if (numAmount <= 30000) return 2;
+    if (numAmount <= 100000) return 5;
+    return 10;
   };
 
   // ✨ จัดการเมื่อเปลี่ยนจำนวนเงิน
@@ -96,9 +94,6 @@ const PromptPayQRGenerator = () => {
     }
     
     try {
-      // ✨ ใช้ PromptPay.io API แทนการสร้าง payload เอง
-      let promptPayUrl = '';
-      
       // จัดรูปแบบเบอร์โทรศัพท์ให้ถูกต้อง
       let formattedPhone = cleanPhone;
       if (formattedPhone.startsWith('66')) {
@@ -108,15 +103,13 @@ const PromptPayQRGenerator = () => {
       }
       
       // สร้าง URL สำหรับ PromptPay.io API
+      let promptPayUrl = '';
       if (amount && parseFloat(amount) > 0) {
-        // มีจำนวนเงิน
         promptPayUrl = `https://promptpay.io/${formattedPhone}/${parseFloat(amount)}`;
       } else {
-        // ไม่มีจำนวนเงิน (ให้ลูกค้ากรอกเอง)
         promptPayUrl = `https://promptpay.io/${formattedPhone}`;
       }
       
-      // ตั้งค่า URL สำหรับแสดง QR Code
       setQrUrl(promptPayUrl);
       setShowResult(true);
       
@@ -126,150 +119,133 @@ const PromptPayQRGenerator = () => {
     }
   };
 
-  // ✨ ฟังก์ชันสำหรับบันทึก QR Code เป็นรูป PNG (แก้ไขให้ทำงานกับ PromptPay.io API)
+  // ✨ ฟังก์ชันสำหรับบันทึก QR Code (แก้ไขให้ใช้ screenshot แทน)
   const saveQRAsImage = async () => {
     if (!qrUrl) return;
 
     try {
-      // สร้าง canvas สำหรับวาดรูป
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      // เปิดหน้าต่างใหม่เพื่อแสดง QR Code สำหรับ screenshot
+      const printWindow = window.open('', '_blank', 'width=400,height=600');
+      if (!printWindow) {
+        alert('กรุณาอนุญาตให้เปิดหน้าต่างใหม่');
+        return;
+      }
 
-      // ตั้งค่าขนาด Canvas
-      canvas.width = 400;
-      canvas.height = 600;
-
-      // พื้นหลังสีขาว
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Header พื้นหลังสีเขียว
-      const headerHeight = 80;
-      const gradient = ctx.createLinearGradient(0, 0, 0, headerHeight);
-      gradient.addColorStop(0, '#10b981');
-      gradient.addColorStop(1, '#059669');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, headerHeight);
-
-      // ข้อความ "พร้อมเพย์" ใน Header
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 24px Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('พร้อมเพย์', canvas.width / 2, 35);
-      
-      ctx.font = 'bold 16px Arial, sans-serif';
-      ctx.fillText('PromptPay', canvas.width / 2, 55);
-
-      // โหลดรูป QR Code จาก PromptPay.io API
-      const qrImage = new window.Image();
-      qrImage.crossOrigin = 'anonymous';
-      
-      return new Promise((resolve) => {
-        qrImage.onload = () => {
-          // วาด QR Code ตรงกลาง
-          const qrSize = 200;
-          const qrX = (canvas.width - qrSize) / 2;
-          const qrY = 120;
-          
-          // พื้นหลังสีขาวรอบ QR
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(qrX - 15, qrY - 15, qrSize + 30, qrSize + 30);
-          
-          // เงาใต้ QR Code
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
-          ctx.shadowBlur = 10;
-          ctx.shadowOffsetY = 5;
-          
-          ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-          
-          // รีเซ็ตเงา
-          ctx.shadowColor = 'transparent';
-          ctx.shadowBlur = 0;
-          ctx.shadowOffsetY = 0;
-
-          // ข้อมูลใต้ QR Code
-          let currentY = qrY + qrSize + 40;
-
-          // เบอร์โทรศัพท์
-          ctx.fillStyle = '#374151';
-          ctx.font = 'bold 14px Arial, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('บัญชีปลายทาง:', canvas.width / 2, currentY);
-          
-          ctx.fillStyle = '#059669';
-          ctx.font = 'bold 18px Arial, sans-serif';
-          ctx.fillText(phoneNumber, canvas.width / 2, currentY + 25);
-          currentY += 60;
-
-          // ชื่อผู้รับ (ถ้ามี)
-          if (displayName) {
-            ctx.fillStyle = '#374151';
-            ctx.font = 'bold 14px Arial, sans-serif';
-            ctx.fillText('ชื่อบัญชี:', canvas.width / 2, currentY);
-            
-            ctx.fillStyle = '#059669';
-            ctx.font = 'bold 16px Arial, sans-serif';
-            ctx.fillText(displayName, canvas.width / 2, currentY + 25);
-            currentY += 50;
-          }
-
-          // จำนวนเงิน
-          ctx.fillStyle = '#374151';
-          ctx.font = 'bold 14px Arial, sans-serif';
-          ctx.fillText('จำนวนเงิน:', canvas.width / 2, currentY);
-
-          if (amount) {
-            const amountColor = parseFloat(amount) > 5000 ? '#f59e0b' : '#059669';
-            ctx.fillStyle = amountColor;
-            ctx.font = 'bold 20px Arial, sans-serif';
-            ctx.fillText(`${parseFloat(amount).toLocaleString()} บาท`, canvas.width / 2, currentY + 25);
-          } else {
-            ctx.fillStyle = '#9ca3af';
-            ctx.font = '16px Arial, sans-serif';
-            ctx.fillText('ผู้โอนกรอกเอง', canvas.width / 2, currentY + 25);
-          }
-          currentY += 60;
-
-          // ข้อความด้านล่าง
-          ctx.fillStyle = '#6b7280';
-          ctx.font = '12px Arial, sans-serif';
-          ctx.fillText('สแกน QR Code เพื่อโอนเงิน', canvas.width / 2, currentY);
-          ctx.fillText('ระบบ PromptPay ธนาคารแห่งประเทศไทย', canvas.width / 2, currentY + 20);
-
-          // ดาวน์โหลดรูป
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              
-              // ชื่อไฟล์
-              const fileName = displayName 
-                ? `promptpay-${displayName.replace(/\s+/g, '-')}-${phoneNumber}.png`
-                : `promptpay-${phoneNumber}-${amount || 'custom'}.png`;
-              
-              link.download = fileName;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(url);
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>PromptPay QR Code</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 20px;
+              background: white;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              min-height: 100vh;
             }
-            resolve(undefined);
-          }, 'image/png');
-        };
+            .container {
+              text-align: center;
+              max-width: 350px;
+              width: 100%;
+            }
+            .header {
+              background: linear-gradient(135deg, #10b981, #059669);
+              color: white;
+              padding: 20px;
+              border-radius: 15px 15px 0 0;
+              margin-bottom: 20px;
+            }
+            .qr-container {
+              background: #f8f9fa;
+              padding: 20px;
+              border-radius: 10px;
+              margin: 20px 0;
+            }
+            .qr-image {
+              width: 200px;
+              height: 200px;
+              border: 1px solid #ddd;
+            }
+            .info {
+              background: white;
+              padding: 20px;
+              border-radius: 0 0 15px 15px;
+              border: 1px solid #e5e7eb;
+            }
+            .amount {
+              font-size: 24px;
+              font-weight: bold;
+              color: #059669;
+              margin: 10px 0;
+            }
+            .amount.high {
+              color: #f59e0b;
+            }
+            .phone {
+              font-size: 18px;
+              font-weight: bold;
+              color: #374151;
+              margin: 10px 0;
+            }
+            .name {
+              font-size: 16px;
+              color: #6b7280;
+              margin: 10px 0;
+            }
+            .footer {
+              font-size: 12px;
+              color: #9ca3af;
+              margin-top: 20px;
+            }
+            @media print {
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>พร้อมเพย์</h1>
+              <p>PromptPay</p>
+            </div>
+            
+            <div class="qr-container">
+              <img src="${qrUrl}" alt="PromptPay QR Code" class="qr-image" />
+            </div>
+            
+            <div class="info">
+              <div class="phone">เบอร์: ${phoneNumber}</div>
+              ${displayName ? `<div class="name">ชื่อ: ${displayName}</div>` : ''}
+              ${amount ? 
+                `<div class="amount ${parseFloat(amount) > 5000 ? 'high' : ''}">${parseFloat(amount).toLocaleString()} บาท</div>` : 
+                '<div class="name">ผู้โอนกรอกเอง</div>'
+              }
+            </div>
+            
+            <div class="footer">
+              <p>สแกน QR Code เพื่อโอนเงิน</p>
+              <p>ระบบ PromptPay ธนาคารแห่งประเทศไทย</p>
+            </div>
+            
+            <div class="no-print" style="margin-top: 20px;">
+              <button onclick="window.print()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">พิมพ์/บันทึก</button>
+              <button onclick="window.close()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-left: 10px;">ปิด</button>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
 
-        qrImage.onerror = () => {
-          alert('ไม่สามารถโหลด QR Code ได้ กรุณาลองใหม่อีกครั้ง');
-          resolve(undefined);
-        };
-
-        // ✨ โหลด QR Code จาก PromptPay.io API
-        qrImage.src = qrUrl;
-      });
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
     } catch (error) {
       console.error('Error saving QR code:', error);
-      alert('เกิดข้อผิดพลาดในการบันทึกรูป');
+      alert('เกิดข้อผิดพลาดในการบันทึกรูป กรุณาลอง Screenshot หน้าจอแทน');
     }
   };
 
@@ -323,7 +299,7 @@ const PromptPayQRGenerator = () => {
               <p className="text-gray-600 font-medium">เบอร์บัญชี: {phoneNumber}</p>
             </div>
 
-            {/* ✨ Warning Banner สำหรับค่าธรรมเนียม */}
+            {/* Warning Banner สำหรับค่าธรรมเนียม */}
             {amount && feeInfo && feeInfo.hasWarning && (
               <div className={`px-8 py-4 ${
                 feeInfo.color === 'red' ? 'bg-red-50 border-b border-red-200' :
@@ -360,15 +336,13 @@ const PromptPayQRGenerator = () => {
             {/* QR Code Section */}
             <div className="px-8 py-8">
               <div className="bg-gray-50 rounded-2xl p-6 text-center mb-6">
-                {/* ✨ ใช้ QR Code จาก PromptPay.io API */}
-                <Image
-                  ref={qrImageRef}
+                {/* ✨ ใช้ iframe แทนการโหลดรูปโดยตรง */}
+                <iframe
                   src={qrUrl}
-                  alt="PromptPay QR Code"
-                  width={220}
-                  height={220}
-                  className="mx-auto"
-                  unoptimized // สำคัญ! เพราะ QR code เป็น dynamic image จาก API
+                  width="220"
+                  height="220"
+                  style={{ border: 'none', display: 'block', margin: '0 auto' }}
+                  title="PromptPay QR Code"
                 />
               </div>
 
@@ -405,7 +379,7 @@ const PromptPayQRGenerator = () => {
                   className="flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg"
                 >
                   <Download className="w-5 h-5" />
-                  <span>บันทึกเป็นรูป</span>
+                  <span>พิมพ์/บันทึกรูป</span>
                 </button>
                 
                 <button
@@ -489,7 +463,7 @@ const PromptPayQRGenerator = () => {
                       type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="09xxxxxxxx"
+                      placeholder="0xxxxxxxxx"
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
                     />
                   </div>
@@ -517,7 +491,7 @@ const PromptPayQRGenerator = () => {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">ปล่อยว่างไว้หากต้องการให้ลูกค้ากรอกเอง</p>
                   
-                  {/* ✨ แสดงข้อมูลค่าธรรมเนียมแบบ Real-time */}
+                  {/* แสดงข้อมูลค่าธรรมเนียมแบบ Real-time */}
                   {amount && (
                     <div className="mt-3">
                       {(() => {
@@ -584,7 +558,7 @@ const PromptPayQRGenerator = () => {
               </div>
             </div>
 
-            {/* ✨ ข้อมูลค่าธรรมเนียมที่ถูกต้อง */}
+            {/* ข้อมูลค่าธรรมเนียมที่ถูกต้อง */}
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
               <h3 className="font-semibold text-blue-800 mb-3 flex items-center space-x-2">
                 <Info className="w-5 h-5" />
