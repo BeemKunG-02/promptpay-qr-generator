@@ -168,8 +168,6 @@ const PromptPayQRGenerator = () => {
       // สร้าง QR Code เป็น Data URL
       const qrDataURL = await QRCode.toDataURL(promptPayPayload, {
         errorCorrectionLevel: 'M',
-        type: 'image/png',
-        quality: 0.92,
         margin: 1,
         color: {
           dark: '#000000',
